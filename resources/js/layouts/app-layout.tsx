@@ -9,6 +9,7 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children, breadcrumbs, title }: AppLayoutProps) {
+    console.log('✅ AppLayout dimuat');
   return (
     <AppLayoutTemplate breadcrumbs={breadcrumbs} title={title}>
       {children}
