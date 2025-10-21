@@ -139,35 +139,78 @@ class RuasJalanController extends Controller
             }
 
             Log::info('Jumlah Placemark ditemukan: ' . count($placemarks));
+$count = 0;
+        foreach ($placemarks as $pm) {
+            $data = [];
 
-            $count = 0;
-            foreach ($placemarks as $pm) {
-                $name = (string) $pm->name;
-                $desc = strip_tags((string) $pm->description);
-                $coordsNode = $pm->xpath('.//kml:coordinates')[0] ?? null;
-
-                if ($coordsNode) {
-                    $coords = trim((string) $coordsNode);
-                    $coordArray = preg_split('/\s+/', $coords);
-                    $first = explode(',', $coordArray[0]);
-                    $last = explode(',', end($coordArray));
-
-                    RuasJalan::create([
-                        'Nm_Ruas' => $name,
-                        'Ura_Dukung' => $desc,
-                        'Koord_X_Aw' => $first[0] ?? null,
-                        'Koord_Y_Aw' => $first[1] ?? null,
-                        'Koord_X_Ak' => $last[0] ?? null,
-                        'Koord_Y_Ak' => $last[1] ?? null,
-                        'Thn_Data' => date('Y'),
-                        'Status' => 'Baru Diimpor',
-                        'Fungsi' => 'Belum Ditentukan',
-                    ]);
-
-                    $count++;
-                } else {
-                    Log::warning('Placemark tanpa koordinat', ['name' => $name]);
+            // ambil semua SimpleData di dalam SchemaData
+            $simpleDataNodes = $pm->xpath('.//kml:ExtendedData//kml:SchemaData//kml:SimpleData');
+            if ($simpleDataNodes) {
+                foreach ($simpleDataNodes as $node) {
+                    $key = trim((string) $node['name']);
+                    $value = trim((string) $node);
+                    $data[$key] = $value;
                 }
+            }
+
+            // tambahkan name & description (kalau ada)
+            $data['Nm_Ruas'] = $data['Nm_Ruas'] ?? (string) $pm->name ?? null;
+            $data['Ura_Dukung'] = $data['Ura_Dukung'] ?? strip_tags((string) $pm->description ?? '');
+
+            // ambil koordinat awal & akhir
+            $coordsNode = $pm->xpath('.//kml:coordinates')[0] ?? null;
+            if ($coordsNode) {
+                $coords = trim((string) $coordsNode);
+                $coordArray = preg_split('/\s+/', $coords);
+                $first = explode(',', $coordArray[0]);
+                $last = explode(',', end($coordArray));
+
+                $data['Koord_X_Aw'] = $first[0] ?? null;
+                $data['Koord_Y_Aw'] = $first[1] ?? null;
+                $data['Koord_X_Ak'] = $last[0] ?? null;
+                $data['Koord_Y_Ak'] = $last[1] ?? null;
+            }
+
+            // isi default
+            $data['Thn_Data'] = $data['Thn_Data'] ?? date('Y');
+            $data['Status'] = $data['Status'] ?? 'Baru Diimpor';
+            $data['Fungsi'] = $data['Fungsi'] ?? 'Belum Ditentukan';
+
+            // simpan ke database
+            RuasJalan::create($data);
+            $count++;
+        // }
+        // else {
+        //             Log::warning('Placemark tanpa koordinat', ['name' => $name]);
+        // }
+            // $count = 0;
+            // foreach ($placemarks as $pm) {
+            //     $name = (string) $pm->name;
+            //     $desc = strip_tags((string) $pm->description);
+            //     $coordsNode = $pm->xpath('.//kml:coordinates')[0] ?? null;
+
+            //     if ($coordsNode) {
+            //         $coords = trim((string) $coordsNode);
+            //         $coordArray = preg_split('/\s+/', $coords);
+            //         $first = explode(',', $coordArray[0]);
+            //         $last = explode(',', end($coordArray));
+
+            //         RuasJalan::create([
+            //             'Nm_Ruas' => $name,
+            //             'Ura_Dukung' => $desc,
+            //             'Koord_X_Aw' => $first[0] ?? null,
+            //             'Koord_Y_Aw' => $first[1] ?? null,
+            //             'Koord_X_Ak' => $last[0] ?? null,
+            //             'Koord_Y_Ak' => $last[1] ?? null,
+            //             'Thn_Data' => date('Y'),
+            //             'Status' => 'Baru Diimpor',
+            //             'Fungsi' => 'Belum Ditentukan',
+            //         ]);
+
+            //         $count++;
+            //     }
+
+
             }
 
             Log::info("Berhasil mengimpor $count ruas jalan.");
