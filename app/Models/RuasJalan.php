@@ -18,7 +18,7 @@ class RuasJalan extends Model
         'Kon_Sdg', 'Kon_Rgn', 'Kon_Rusak', 'Kon_Mntp', 'Kon_T_Mntp', 'Panjang', 'Lbr_Keras',
         'LHRT', 'VCR', 'Tipe_Jln', 'MST', 'Tipe_Keras', 'Tanah_Kri', 'Macadam', 'Aspal',
         'Rigid', 'Thn_Pen_Ak', 'Jns_Pen', 'Koord_X_Aw', 'Koord_Y_Aw', 'Koord_X_Ak', 'Koord_Y_Ak',
-        'REMARK', 'Shape_Leng'
+        'REMARK', 'Shape_Leng','koordinat_full'
     ];
 }
 

@@ -84,18 +84,18 @@ class RuasJalanController extends Controller
 
     public function import(Request $request)
     {
-
         Log::info('✅ melakukan cek file import KMZ');
 
         $request->validate([
             'file' => 'required|file',
         ]);
+
         Log::info('=== MULAI IMPORT KMZ ===');
         $file = $request->file('file');
         $zip = new \ZipArchive;
 
         Log::info('File path: ' . $file->getPathname());
-        // dd('Masuk ke fungsi import');
+
         if ($zip->open($file->getPathname()) === true) {
             $extractPath = storage_path('app/kmz_extract');
 
@@ -107,7 +107,7 @@ class RuasJalanController extends Controller
             $zip->close();
             Log::info('File berhasil diekstrak ke: ' . $extractPath);
 
-            // cari semua file KML di folder hasil ekstraksi
+            // cari semua file .kml
             $files = glob($extractPath . '/*.kml');
             if (empty($files)) {
                 $files = glob($extractPath . '/**/*.kml', GLOB_BRACE);
@@ -139,87 +139,92 @@ class RuasJalanController extends Controller
             }
 
             Log::info('Jumlah Placemark ditemukan: ' . count($placemarks));
-$count = 0;
-        foreach ($placemarks as $pm) {
-            $data = [];
 
-            // ambil semua SimpleData di dalam SchemaData
-            $simpleDataNodes = $pm->xpath('.//kml:ExtendedData//kml:SchemaData//kml:SimpleData');
-            if ($simpleDataNodes) {
-                foreach ($simpleDataNodes as $node) {
-                    $key = trim((string) $node['name']);
-                    $value = trim((string) $node);
-                    $data[$key] = $value;
+            $count = 0;
+            foreach ($placemarks as $pm) {
+                $data = [];
+
+                // ambil semua SimpleData di dalam SchemaData
+                $simpleDataNodes = $pm->xpath('.//kml:ExtendedData//kml:SchemaData//kml:SimpleData');
+                if ($simpleDataNodes) {
+                    foreach ($simpleDataNodes as $node) {
+                        $key = trim((string) $node['name']);
+                        $value = trim((string) $node);
+                        $data[$key] = $value;
+                    }
+                }
+
+                // tambahkan name & description
+                $data['Nm_Ruas'] = $data['Nm_Ruas'] ?? (string) $pm->name ?? null;
+                $data['Ura_Dukung'] = $data['Ura_Dukung'] ?? strip_tags((string) $pm->description ?? '');
+
+                // ambil semua koordinat
+                $coordsNode = $pm->xpath('.//kml:coordinates')[0] ?? null;
+                $path = [];
+                if ($coordsNode) {
+                    $coords = trim((string) $coordsNode);
+                    $coordArray = preg_split('/\s+/', $coords);
+
+                    foreach ($coordArray as $c) {
+                        $parts = explode(',', $c);
+                        if (count($parts) >= 2) {
+                            $path[] = [
+                                'lng' => (float) $parts[0],
+                                'lat' => (float) $parts[1],
+                            ];
+                        }
+                    }
+
+                    if (count($path) > 0) {
+                        $first = $path[0];
+                        $last = $path[count($path) - 1];
+                        $data['Koord_X_Aw'] = $first['lng'];
+                        $data['Koord_Y_Aw'] = $first['lat'];
+                        $data['Koord_X_Ak'] = $last['lng'];
+                        $data['Koord_Y_Ak'] = $last['lat'];
+                        $data['koordinat_full'] = json_encode($path);
+                    }
+                }
+
+                $data['Thn_Data'] = $data['Thn_Data'] ?? date('Y');
+                $data['Status'] = $data['Status'] ?? 'Baru Diimpor';
+                $data['Fungsi'] = $data['Fungsi'] ?? 'Belum Ditentukan';
+
+                try {
+                    \App\Models\RuasJalan::create($data);
+                    $count++;
+                } catch (\Throwable $e) {
+                    Log::error('Gagal menyimpan Placemark', [
+                        'error' => $e->getMessage(),
+                        'data' => $data,
+                    ]);
                 }
             }
 
-            // tambahkan name & description (kalau ada)
-            $data['Nm_Ruas'] = $data['Nm_Ruas'] ?? (string) $pm->name ?? null;
-            $data['Ura_Dukung'] = $data['Ura_Dukung'] ?? strip_tags((string) $pm->description ?? '');
-
-            // ambil koordinat awal & akhir
-            $coordsNode = $pm->xpath('.//kml:coordinates')[0] ?? null;
-            if ($coordsNode) {
-                $coords = trim((string) $coordsNode);
-                $coordArray = preg_split('/\s+/', $coords);
-                $first = explode(',', $coordArray[0]);
-                $last = explode(',', end($coordArray));
-
-                $data['Koord_X_Aw'] = $first[0] ?? null;
-                $data['Koord_Y_Aw'] = $first[1] ?? null;
-                $data['Koord_X_Ak'] = $last[0] ?? null;
-                $data['Koord_Y_Ak'] = $last[1] ?? null;
-            }
-
-            // isi default
-            $data['Thn_Data'] = $data['Thn_Data'] ?? date('Y');
-            $data['Status'] = $data['Status'] ?? 'Baru Diimpor';
-            $data['Fungsi'] = $data['Fungsi'] ?? 'Belum Ditentukan';
-
-            // simpan ke database
-            RuasJalan::create($data);
-            $count++;
-        // }
-        // else {
-        //             Log::warning('Placemark tanpa koordinat', ['name' => $name]);
-        // }
-            // $count = 0;
-            // foreach ($placemarks as $pm) {
-            //     $name = (string) $pm->name;
-            //     $desc = strip_tags((string) $pm->description);
-            //     $coordsNode = $pm->xpath('.//kml:coordinates')[0] ?? null;
-
-            //     if ($coordsNode) {
-            //         $coords = trim((string) $coordsNode);
-            //         $coordArray = preg_split('/\s+/', $coords);
-            //         $first = explode(',', $coordArray[0]);
-            //         $last = explode(',', end($coordArray));
-
-            //         RuasJalan::create([
-            //             'Nm_Ruas' => $name,
-            //             'Ura_Dukung' => $desc,
-            //             'Koord_X_Aw' => $first[0] ?? null,
-            //             'Koord_Y_Aw' => $first[1] ?? null,
-            //             'Koord_X_Ak' => $last[0] ?? null,
-            //             'Koord_Y_Ak' => $last[1] ?? null,
-            //             'Thn_Data' => date('Y'),
-            //             'Status' => 'Baru Diimpor',
-            //             'Fungsi' => 'Belum Ditentukan',
-            //         ]);
-
-            //         $count++;
-            //     }
-
-
-            }
-
-            Log::info("Berhasil mengimpor $count ruas jalan.");
-
+            Log::info("✅ Berhasil mengimpor $count ruas jalan.");
             return back()->with('success', "Data KMZ berhasil diimpor ($count ruas jalan).");
         }
 
-        Log::error('Gagal membuka file KMZ');
+        Log::error('❌ Gagal membuka file KMZ');
         return back()->withErrors(['msg' => 'Gagal membuka file KMZ']);
     }
+
+
+    public function map()
+    {
+        $ruas = RuasJalan::all();
+        return inertia('RuasJalan/Map', [
+            'ruas' => $ruas
+        ]);
+    }
+
+    public function show($id)
+{
+    $ruas = RuasJalan::findOrFail($id);
+
+    return inertia('RuasJalan/Show', [
+        'ruas' => $ruas,
+    ]);
+}
 
 }

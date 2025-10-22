@@ -40,12 +40,15 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::delete('/files/{id}', [UserFileController::class, 'destroy'])->name('files.destroy');
     Route::resource('media', MediaFolderController::class);
 
-    Route::resource('ruas-jalan', RuasJalanController::class);
+    Route::resource('ruas-jalan', RuasJalanController::class)->except(['show']);
     Route::get('/ruas-jalan', [RuasJalanController::class, 'index'])
         ->name('ruas-jalan.index');
     Route::post('/ruas-jalan/import', [RuasJalanController::class, 'import'])
     ->name('ruas-jalan.import')
     ->middleware(['auth', 'verified']);
+    Route::get('/ruas-jalan/map', [RuasJalanController::class, 'map'])->name('ruas.map');
+    Route::get('/ruas-jalan/{id}', [RuasJalanController::class, 'show'])->name('ruas-jalan.show');
+
 });
 
 
