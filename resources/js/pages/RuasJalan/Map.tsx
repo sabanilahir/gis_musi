@@ -1,122 +1,114 @@
-import React, { useCallback, useState } from "react";
-import { Head, usePage } from "@inertiajs/react";
+import React from "react";
 import AppLayout from "@/layouts/app-layout";
 import {
   GoogleMap,
   Polyline,
-  Marker,
-  useJsApiLoader,
   InfoWindow,
+  useJsApiLoader,
 } from "@react-google-maps/api";
+import { usePage, Head } from "@inertiajs/react";
 
-const containerStyle = {
-  width: "100%",
-  height: "600px",
-  borderRadius: "12px",
-};
+type Koordinat = { lat: number; lng: number };
+type Segment = { segment_ke: number; koordinat: Koordinat[] };
+type Ruas = { ruas_jalan_id: number; Nm_Ruas: string; segments: Segment[] };
 
-// Palet warna biar tiap ruas beda
-const colors = ["#FF0000", "#00BFFF", "#32CD32", "#FFA500", "#8A2BE2", "#FF1493"];
-
-export default function MapView() {
-  const { ruas }: any = usePage().props;
-  const [selected, setSelected] = useState<any>(null);
+export default function Map() {
+  const page = usePage<{ ruas: Ruas[] }>();
+  const ruas = page.props.ruas || [];
+  const [selected, setSelected] = React.useState<any>(null);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
   });
 
-  const center = { lat: -3.0, lng: 103.0 };
+  const firstPoint = ruas?.[0]?.segments?.[0]?.koordinat?.[0];
+  const center = firstPoint || { lat: -3.0, lng: 103.0 };
 
-  const renderPolylines = useCallback(() => {
-    if (!ruas || ruas.length === 0) return null;
-
-    return ruas.map((r: any, index: number) => {
-      let path: { lat: number; lng: number }[] = [];
-
-      try {
-        if (r.koordinat_full) {
-          path = JSON.parse(r.koordinat_full);
-        } else if (r.Koord_X_Aw && r.Koord_Y_Aw && r.Koord_X_Ak && r.Koord_Y_Ak) {
-          path = [
-            { lat: parseFloat(r.Koord_Y_Aw), lng: parseFloat(r.Koord_X_Aw) },
-            { lat: parseFloat(r.Koord_Y_Ak), lng: parseFloat(r.Koord_X_Ak) },
-          ];
-        }
-      } catch (e) {
-        console.error("Error parsing koordinat_full:", e);
-      }
-
-      if (path.length === 0) return null;
-
-      const color = colors[index % colors.length];
-
-      return (
-        <React.Fragment key={r.id}>
-          <Polyline
-            path={path}
-            options={{
-              strokeColor: color,
-              strokeOpacity: 0.8,
-              strokeWeight: 4,
-            }}
-            onClick={() => setSelected(r)}
-          />
-
-          {/* Marker awal */}
-          <Marker
-            position={path[0]}
-            title={`Awal: ${r.Nm_Ruas}`}
-            onClick={() => setSelected(r)}
-          />
-
-          {/* Marker akhir */}
-          <Marker
-            position={path[path.length - 1]}
-            title={`Akhir: ${r.Nm_Ruas}`}
-            onClick={() => setSelected(r)}
-          />
-        </React.Fragment>
-      );
-    });
-  }, [ruas]);
+  if (!isLoaded) return <div>⏳ Memuat peta...</div>;
+  if (ruas.length === 0) return <div>⚠️ Tidak ada data ruas ditemukan.</div>;
 
   return (
     <AppLayout>
-      <Head title="Peta Ruas Jalan" />
+      <div className="p-6">
+        <Head title="Peta Ruas Jalan" />
+        <h1 className="text-2xl font-bold mb-3">🗺️ Peta Ruas Jalan</h1>
 
-      <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-bold">🗺️ Peta Ruas Jalan</h1>
-        <p className="text-gray-600">
-          Menampilkan hasil import file KMZ dari database.
-        </p>
+        <div className="w-full h-[600px] rounded-lg overflow-hidden shadow">
+          <GoogleMap
+            mapContainerStyle={{ width: "100%", height: "100%" }}
+            center={center}
+            zoom={10}
+            mapTypeId="roadmap"
+          >
+            {ruas.map((r, ri) => {
+              const color = getColor(ri);
+              return (
+                <React.Fragment key={r.ruas_jalan_id}>
+                  {r.segments.map((seg, si) => {
+                    if (!seg.koordinat || seg.koordinat.length < 2) return null;
 
-        {isLoaded ? (
-          <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={9}>
-            {renderPolylines()}
+                    const path = seg.koordinat;
+                    const midPoint = path[Math.floor(path.length / 2)];
 
-            {selected && (
+                    return (
+                      <Polyline
+                        key={`${r.ruas_jalan_id}-${si}`}
+                        path={path}
+                        options={{
+                          strokeColor: color,
+                          strokeWeight: 4,
+                          strokeOpacity: 0.9,
+                        }}
+                        onClick={() =>
+                          setSelected({
+                            ruas_id: r.ruas_jalan_id,
+                            Nm_Ruas: r.Nm_Ruas,
+                            segment: seg.segment_ke,
+                            posisi: midPoint,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+
+            {selected && selected.posisi && (
               <InfoWindow
-                position={{
-                  lat: parseFloat(selected.Koord_Y_Ak),
-                  lng: parseFloat(selected.Koord_X_Ak),
-                }}
+                position={selected.posisi}
                 onCloseClick={() => setSelected(null)}
               >
                 <div className="p-2 text-sm">
-                  <h2 className="font-semibold text-lg">{selected.Nm_Ruas}</h2>
-                  <p>🛣️ {selected.Kl_Dat_Das}</p>
-                  <p>📅 Tahun: {selected.Thn_Data}</p>
-                  <p>📍 Status: {selected.Status}</p>
-                  <p>🏗️ Fungsi: {selected.Fungsi}</p>
+                  <h2 className="font-semibold text-gray-800">
+                    🛣️ {selected.Nm_Ruas}
+                  </h2>
+                  <p className="text-gray-600">Segment ke-{selected.segment}</p>
+                  <p className="text-gray-500 text-xs">
+                    Ruas ID: {selected.ruas_id}
+                  </p>
                 </div>
               </InfoWindow>
             )}
           </GoogleMap>
-        ) : (
-          <div className="text-gray-500">Memuat peta...</div>
-        )}
+        </div>
       </div>
     </AppLayout>
   );
+}
+
+function getColor(index: number) {
+  const colors = [
+    "#FF0000",
+    "#00BFFF",
+    "#32CD32",
+    "#FFA500",
+    "#8A2BE2",
+    "#FF1493",
+    "#FFD700",
+    "#1E90FF",
+    "#008000",
+    "#FF7F50",
+  ];
+  return colors[index % colors.length];
 }

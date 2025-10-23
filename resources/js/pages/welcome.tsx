@@ -67,7 +67,7 @@ export default function Welcome() {
                   href="/register"
                   className="px-8 py-3 rounded-lg bg-[var(--primary)] text-white font-medium hover:bg-[var(--primary)]/90 transition shadow-md hover:-translate-y-0.5"
                 >
-                  Dashboard
+                  Register
                 </Link>
               </>
             )}

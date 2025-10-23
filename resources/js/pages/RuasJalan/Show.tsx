@@ -1,111 +1,148 @@
-import AppLayout from '@/layouts/app-layout';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { GoogleMap, InfoWindow, Marker, Polyline, useJsApiLoader } from '@react-google-maps/api';
-import { useCallback, useState } from 'react';
+import React, { useMemo, useState } from "react";
+import { Head, usePage } from "@inertiajs/react";
+import AppLayout from "@/layouts/app-layout";
+import {
+  GoogleMap,
+  Polyline,
+  Marker,
+  InfoWindow,
+  useJsApiLoader,
+} from "@react-google-maps/api";
 
 const containerStyle = {
-    width: '100%',
-    height: '600px',
-    borderRadius: '12px',
+  width: "100%",
+  height: "600px",
+  borderRadius: "12px",
 };
 
 export default function Show() {
-    const { ruas }: any = usePage().props;
-    const [selected, setSelected] = useState<any>(null);
+  const { ruas }: any = usePage().props;
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+  });
 
-    const { isLoaded } = useJsApiLoader({
-        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+  const [showInfo, setShowInfo] = useState(true); // kontrol popup InfoWindow
+
+  const koordinat = ruas.koordinat || [];
+
+  // Kelompokkan berdasarkan segment_ke
+  const segments = useMemo(() => {
+    const grouped: Record<number, any[]> = {};
+    koordinat.forEach((k: any) => {
+      const seg = k.segment_ke || 1;
+      if (!grouped[seg]) grouped[seg] = [];
+      grouped[seg].push({
+        lat: parseFloat(k.latitude),
+        lng: parseFloat(k.longitude),
+      });
     });
+    return Object.values(grouped);
+  }, [koordinat]);
 
-    // Default center (kalau koordinat tersedia, pakai itu)
-    const center =
-        ruas.Koord_Y_Aw && ruas.Koord_X_Aw ? { lat: parseFloat(ruas.Koord_Y_Aw), lng: parseFloat(ruas.Koord_X_Aw) } : { lat: -3.0, lng: 103.0 };
+  const allPoints = koordinat.map((k: any) => ({
+    lat: parseFloat(k.latitude),
+    lng: parseFloat(k.longitude),
+  }));
 
-    const renderPolyline = useCallback(() => {
-        let path: { lat: number; lng: number }[] = [];
+  const center =
+    allPoints.length > 0
+      ? allPoints[Math.floor(allPoints.length / 2)]
+      : { lat: -3.0, lng: 103.0 };
 
-        try {
-            if (ruas.koordinat_full) {
-                path = JSON.parse(ruas.koordinat_full);
-            } else if (ruas.Koord_X_Aw && ruas.Koord_Y_Aw && ruas.Koord_X_Ak && ruas.Koord_Y_Ak) {
-                path = [
-                    { lat: parseFloat(ruas.Koord_Y_Aw), lng: parseFloat(ruas.Koord_X_Aw) },
-                    { lat: parseFloat(ruas.Koord_Y_Ak), lng: parseFloat(ruas.Koord_X_Ak) },
-                ];
-            }
-        } catch (e) {
-            console.error('Error parsing koordinat_full:', e);
-        }
+  const handleBack = () => window.history.back();
 
-        if (path.length === 0) return null;
+  return (
+    <AppLayout>
+      <Head title={`Peta ${ruas.Nm_Ruas}`} />
 
-        return (
-            <>
+      <div className="p-6 space-y-6">
+        {/* Header: Judul & Tombol Kembali */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">
+              {ruas.Nm_Ruas}
+            </h1>
+            {ruas.Keterangan && (
+              <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base">
+                {ruas.Keterangan}
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            ← Kembali
+          </button>
+        </div>
+
+        {/* Keterangan Ruas */}
+        <div
+          className="p-4 rounded-xl shadow border transition-colors duration-300
+          bg-white dark:bg-gray-800 dark:text-gray-100 text-sm md:text-base"
+        >
+          <p><strong>Tahun:</strong> {ruas.Thn_Data}</p>
+          <p><strong>Status:</strong> {ruas.Status}</p>
+          <p><strong>Fungsi:</strong> {ruas.Fungsi}</p>
+          <p><strong>Jumlah Koordinat:</strong> {koordinat.length} titik</p>
+          <p><strong>Jumlah Segmen:</strong> {segments.length}</p>
+        </div>
+
+        {/* Peta */}
+        <div>
+          {isLoaded ? (
+            <GoogleMap
+              mapContainerStyle={containerStyle}
+              center={center}
+              zoom={12}
+            >
+              {segments.map((seg, idx) => (
                 <Polyline
-                    path={path}
-                    options={{
-                        strokeColor: '#FF0000',
-                        strokeOpacity: 0.8,
-                        strokeWeight: 4,
-                    }}
-                    onClick={() => setSelected(ruas)}
+                  key={idx}
+                  path={seg}
+                  options={{
+                    strokeColor: "#007BFF", // semua segmen warna biru
+                    strokeOpacity: 0.8,
+                    strokeWeight: 4,
+                  }}
                 />
-                <Marker position={path[0]} title="Titik Awal" />
-                <Marker position={path[path.length - 1]} title="Titik Akhir" />
-            </>
-        );
-    }, [ruas]);
+              ))}
 
-    return (
-        <AppLayout>
-            <Head title={`Detail Ruas - ${ruas.Nm_Ruas}`} />
+              {/* Titik awal dan akhir */}
+              {allPoints.length > 0 && (
+                <>
+                  <Marker
+                    position={allPoints[0]}
+                    label="Awal"
+                    onClick={() => setShowInfo(true)}
+                  />
+                  <Marker
+                    position={allPoints[allPoints.length - 1]}
+                    label="Akhir"
+                  />
 
-            <div className="space-y-4 p-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold">{ruas.Nm_Ruas}</h1>
-                    <Link href={route('ruas-jalan.index')} className="text-blue-600 hover:underline">
-                        ← Kembali ke daftar
-                    </Link>
-                </div>
-
-                <div className="space-y-2 rounded-lg bg-white p-4 text-sm text-gray-800 shadow dark:bg-gray-800 dark:text-gray-100">
-                    <p>
-                        <span className="font-semibold text-gray-700 dark:text-gray-300">Tahun:</span> {ruas.Thn_Data}
-                    </p>
-                    <p>
-                        <span className="font-semibold text-gray-700 dark:text-gray-300">Status:</span> {ruas.Status}
-                    </p>
-                    <p>
-                        <span className="font-semibold text-gray-700 dark:text-gray-300">Fungsi:</span> {ruas.Fungsi}
-                    </p>
-                    <p>
-                        <span className="font-semibold text-gray-700 dark:text-gray-300">Uraian:</span> {ruas.Ura_Dukung || '-'}
-                    </p>
-                </div>
-                {isLoaded ? (
-                    <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={11} mapTypeId="satellite">
-                        {renderPolyline()}
-
-                        {selected && (
-                            <InfoWindow
-                                position={{
-                                    lat: parseFloat(ruas.Koord_Y_Ak),
-                                    lng: parseFloat(ruas.Koord_X_Ak),
-                                }}
-                                onCloseClick={() => setSelected(null)}
-                            >
-                                <div className="text-sm">
-                                    <h2 className="font-semibold">{ruas.Nm_Ruas}</h2>
-                                    <p>{ruas.Status}</p>
-                                    <p>{ruas.Fungsi}</p>
-                                </div>
-                            </InfoWindow>
-                        )}
-                    </GoogleMap>
-                ) : (
-                    <div className="text-gray-500">Memuat peta...</div>
-                )}
+                  {/* Popup InfoWindow untuk Nama Ruas */}
+                  {showInfo && (
+                    <InfoWindow
+                      position={allPoints[0]}
+                      onCloseClick={() => setShowInfo(false)}
+                    >
+                      <div className="text-gray-800 text-sm font-medium">
+                        📍 {ruas.Nm_Ruas}
+                      </div>
+                    </InfoWindow>
+                  )}
+                </>
+              )}
+            </GoogleMap>
+          ) : (
+            <div className="text-gray-500 text-center py-10">
+              Memuat peta...
             </div>
-        </AppLayout>
-    );
+          )}
+        </div>
+      </div>
+    </AppLayout>
+  );
 }
