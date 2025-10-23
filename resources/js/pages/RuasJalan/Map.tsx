@@ -10,7 +10,7 @@ import { usePage, Head } from "@inertiajs/react";
 
 type Koordinat = { lat: number; lng: number };
 type Segment = { segment_ke: number; koordinat: Koordinat[] };
-type Ruas = { ruas_jalan_id: number; Nm_Ruas: string; segments: Segment[] };
+type Ruas = { ruas_jalan_id: number; nm_ruas: string; segments: Segment[] };
 
 export default function Map() {
   const page = usePage<{ ruas: Ruas[] }>();
@@ -62,7 +62,7 @@ export default function Map() {
                         onClick={() =>
                           setSelected({
                             ruas_id: r.ruas_jalan_id,
-                            Nm_Ruas: r.Nm_Ruas,
+                            nm_ruas: r.nm_ruas,
                             segment: seg.segment_ke,
                             posisi: midPoint,
                           })
@@ -81,7 +81,7 @@ export default function Map() {
               >
                 <div className="p-2 text-sm">
                   <h2 className="font-semibold text-gray-800">
-                    🛣️ {selected.Nm_Ruas}
+                    🛣️ {selected.nm_ruas}
                   </h2>
                   <p className="text-gray-600">Segment ke-{selected.segment}</p>
                   <p className="text-gray-500 text-xs">

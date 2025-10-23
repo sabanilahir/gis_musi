@@ -12,27 +12,57 @@ export default function Index() {
     const [search, setSearch] = useState(filters?.search || '');
     const [loading, setLoading] = useState(false);
 
-    // ======== STATE MODAL EDIT ========
-    // const [isModalOpen, setIsModalOpen] = useState(false);
-    // const [selectedRuas, setSelectedRuas] = useState<any>(null);
-    // const [editValues, setEditValues] = useState({
-    //     Nm_Ruas: '',
-    //     Thn_Data: '',
-    //     Status: '',
-    //     Kab_Kot: '',
-    // });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRuas, setSelectedRuas] = useState<any>(null);
     const [editValues, setEditValues] = useState<any>({});
 
     const editableFields = [
-        'Kl_Dat_Das', 'Nm_Ruas', 'Thn_Data', 'Status', 'Fungsi', 'Mendukung', 'Ura_Dukung',
-        'Kd_Bd_PU', 'Kd_Jns_Inf', 'Kd_Inf', 'Propinsi', 'Kab_Kot', 'Kecamatan', 'Desa_Kel',
-        'Tk_Ruas_Aw', 'Tk_Ruas_Ak', 'Kd_Patok', 'Km_Awal', 'Km_Akhir', 'Nm_Lintas', 'Kon_Baik',
-        'Kon_Sdg', 'Kon_Rgn', 'Kon_Rusak', 'Kon_Mntp', 'Kon_T_Mntp', 'Panjang', 'Lbr_Keras',
-        'LHRT', 'VCR', 'Tipe_Jln', 'MST', 'Tipe_Keras', 'Tanah_Kri', 'Macadam', 'Aspal',
-        'Rigid', 'Thn_Pen_Ak', 'Jns_Pen', 'Koord_X_Aw', 'Koord_Y_Aw', 'Koord_X_Ak', 'Koord_Y_Ak',
-        'REMARK', 'Shape_Leng', 'koordinat_full',
+        'kl_dat_das',
+        'nm_ruas',
+        'thn_data',
+        'status',
+        'fungsi',
+        'mendukung',
+        'ura_dukung',
+        'kd_bd_pu',
+        'kd_jns_inf',
+        'kd_inf',
+        'propinsi',
+        'kab_kot',
+        'kecamatan',
+        'desa_kel',
+        'tk_ruas_aw',
+        'tk_ruas_ak',
+        'kd_patok',
+        'km_awal',
+        'km_akhir',
+        'nm_lintas',
+        'kon_baik',
+        'kon_sdg',
+        'kon_rgn',
+        'kon_rusak',
+        'kon_mntp',
+        'kon_t_mntp',
+        'panjang',
+        'lbr_keras',
+        'lhrt',
+        'vcr',
+        'tipe_jln',
+        'mst',
+        'tipe_keras',
+        'tanah_kri',
+        'macadam',
+        'aspal',
+        'rigid',
+        'thn_pen_ak',
+        'jns_pen',
+        'koord_x_aw',
+        'koord_y_aw',
+        'koord_x_ak',
+        'koord_y_ak',
+        'remark',
+        'shape_leng',
+        'koordinat_full',
     ];
 
     // ======== IMPORT FILE ========
@@ -88,23 +118,14 @@ export default function Index() {
     };
 
     // ======== OPEN MODAL EDIT ========
-    // const openEditModal = (item: any) => {
-    //     setSelectedRuas(item);
-    //     setEditValues({
-    //         Nm_Ruas: item.Nm_Ruas || '',
-    //         Thn_Data: item.Thn_Data || '',
-    //         Status: item.Status || '',
-    //         Kab_Kot: item.Kab_Kot || '',
-    //     });
-    //     setIsModalOpen(true);
-    // };
-const openEditModal = (item: any) => {
+    const openEditModal = (item: any) => {
         setSelectedRuas(item);
         const values: any = {};
         editableFields.forEach((field) => (values[field] = item[field] || ''));
         setEditValues(values);
         setIsModalOpen(true);
     };
+
     // ======== SIMPAN PERUBAHAN ========
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -123,6 +144,7 @@ const openEditModal = (item: any) => {
             },
         );
     };
+
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -186,7 +208,6 @@ const openEditModal = (item: any) => {
 
                 {/* Pencarian */}
                 <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                    {/* Kolom pencarian */}
                     <div className="flex items-center">
                         <select
                             value={perPage}
@@ -217,13 +238,13 @@ const openEditModal = (item: any) => {
                                     No
                                 </th>
                                 {[
-                                    { key: 'Nm_Ruas', label: 'Nama' },
-                                    { key: 'Panjang', label: 'Panjang (KM)' },
-                                    { key: 'Lbr_Keras', label: 'Lebar (M)' },
-                                    { key: 'Kon_Baik', label: 'Kondisi' },
-                                    { key: 'Status', label: 'Sistem' },
-                                    { key: 'Fungsi', label: 'Peran' },
-                                    { key: 'Tk_Ruas_Ak', label: 'Kelas' },
+                                    { key: 'nm_ruas', label: 'Nama' },
+                                    { key: 'panjang', label: 'Panjang (KM)' },
+                                    { key: 'lbr_keras', label: 'Lebar (M)' },
+                                    { key: 'kon_baik', label: 'Kondisi' },
+                                    { key: 'status', label: 'Sistem' },
+                                    { key: 'fungsi', label: 'Peran' },
+                                    { key: 'tk_ruas_ak', label: 'Kelas' },
                                 ].map((col) => (
                                     <th
                                         key={col.key}
@@ -251,18 +272,17 @@ const openEditModal = (item: any) => {
                                             i % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'
                                         } hover:bg-gray-100 dark:hover:bg-gray-700`}
                                     >
-                                        {/* Nomor urut */}
                                         <td className="px-6 py-3 text-sm text-gray-800 dark:text-gray-100">
                                             {i + 1 + (ruas.current_page - 1) * ruas.per_page}
                                         </td>
 
-                                        <td className="px-6 py-3 text-sm font-medium text-gray-800 dark:text-gray-100">{item.Nm_Ruas}</td>
-                                        <td className="px-6 py-3 text-sm">{item.Panjang || '-'}</td>
-                                        <td className="px-6 py-3 text-sm">{item.Lbr_Keras || '-'}</td>
-                                        <td className="px-6 py-3 text-sm">{item.Kon_Baik || item.Kon_Sdg || item.Kon_Rusak || '-'}</td>
-                                        <td className="px-6 py-3 text-sm">{item.Status || '-'}</td>
-                                        <td className="px-6 py-3 text-sm">{item.Fungsi || '-'}</td>
-                                        <td className="px-6 py-3 text-sm">{item.Tk_Ruas_Ak || '-'}</td>
+                                        <td className="px-6 py-3 text-sm font-medium text-gray-800 dark:text-gray-100">{item.nm_ruas}</td>
+                                        <td className="px-6 py-3 text-sm">{item.panjang || '-'}</td>
+                                        <td className="px-6 py-3 text-sm">{item.lbr_keras || '-'}</td>
+                                        <td className="px-6 py-3 text-sm">{item.kon_baik || item.kon_sdg || item.kon_rusak || '-'}</td>
+                                        <td className="px-6 py-3 text-sm">{item.status || '-'}</td>
+                                        <td className="px-6 py-3 text-sm">{item.fungsi || '-'}</td>
+                                        <td className="px-6 py-3 text-sm">{item.tk_ruas_ak || '-'}</td>
 
                                         <td className="px-6 py-3 text-center">
                                             <div className="flex justify-center gap-2">
@@ -317,8 +337,18 @@ const openEditModal = (item: any) => {
             {/* ===== MODAL EDIT ===== */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
+                    <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
+                        {/* Tombol silang (close) di kanan atas */}
+                        <button
+                            type="button"
+                            onClick={() => setIsModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                            ✕
+                        </button>
+
                         <h2 className="mb-4 text-xl font-bold">Edit Data Ruas Jalan</h2>
+
                         <form onSubmit={handleEditSubmit} className="grid grid-cols-2 gap-3">
                             {editableFields.map((field) => (
                                 <div key={field}>
@@ -329,6 +359,7 @@ const openEditModal = (item: any) => {
                                     />
                                 </div>
                             ))}
+
                             <div className="col-span-2 mt-4 flex justify-end gap-3">
                                 <Button type="button" className="bg-gray-500 text-white hover:bg-gray-600" onClick={() => setIsModalOpen(false)}>
                                     Batal

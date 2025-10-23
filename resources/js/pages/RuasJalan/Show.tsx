@@ -25,7 +25,7 @@ export default function Show() {
 
   const koordinat = ruas.koordinat || [];
 
-  // Kelompokkan berdasarkan segment_ke
+  // 🔹 Kelompokkan berdasarkan segment_ke
   const segments = useMemo(() => {
     const grouped: Record<number, any[]> = {};
     koordinat.forEach((k: any) => {
@@ -53,18 +53,18 @@ export default function Show() {
 
   return (
     <AppLayout>
-      <Head title={`Peta ${ruas.Nm_Ruas}`} />
+      <Head title={`Peta ${ruas.nm_ruas}`} />
 
       <div className="p-6 space-y-6">
         {/* Header: Judul & Tombol Kembali */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">
-              {ruas.Nm_Ruas}
+              {ruas.nm_ruas}
             </h1>
-            {ruas.Keterangan && (
+            {ruas.keterangan && (
               <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base">
-                {ruas.Keterangan}
+                {ruas.keterangan}
               </p>
             )}
           </div>
@@ -82,9 +82,9 @@ export default function Show() {
           className="p-4 rounded-xl shadow border transition-colors duration-300
           bg-white dark:bg-gray-800 dark:text-gray-100 text-sm md:text-base"
         >
-          <p><strong>Tahun:</strong> {ruas.Thn_Data}</p>
-          <p><strong>Status:</strong> {ruas.Status}</p>
-          <p><strong>Fungsi:</strong> {ruas.Fungsi}</p>
+          <p><strong>Tahun:</strong> {ruas.thn_data}</p>
+          <p><strong>Status:</strong> {ruas.status}</p>
+          <p><strong>Fungsi:</strong> {ruas.fungsi}</p>
           <p><strong>Jumlah Koordinat:</strong> {koordinat.length} titik</p>
           <p><strong>Jumlah Segmen:</strong> {segments.length}</p>
         </div>
@@ -102,7 +102,7 @@ export default function Show() {
                   key={idx}
                   path={seg}
                   options={{
-                    strokeColor: "#007BFF", // semua segmen warna biru
+                    strokeColor: "#007BFF",
                     strokeOpacity: 0.8,
                     strokeWeight: 4,
                   }}
@@ -129,7 +129,7 @@ export default function Show() {
                       onCloseClick={() => setShowInfo(false)}
                     >
                       <div className="text-gray-800 text-sm font-medium">
-                        📍 {ruas.Nm_Ruas}
+                        📍 {ruas.nm_ruas}
                       </div>
                     </InfoWindow>
                   )}

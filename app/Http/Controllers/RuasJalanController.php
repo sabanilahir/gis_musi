@@ -9,32 +9,32 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+
 class RuasJalanController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->get('search');
-        $perPage = $request->get('per_page', 10); // ambil jumlah per halaman, default 10
+        $perPage = $request->get('per_page', 10);
 
         $ruas = RuasJalan::query()
             ->when($search, function ($query, $search) {
-                $query->where('Nm_Ruas', 'like', "%{$search}%")
-                    ->orWhere('Kab_Kot', 'like', "%{$search}%")
-                    ->orWhere('Status', 'like', "%{$search}%");
+                $query->where('nm_ruas', 'like', "%{$search}%")
+                    ->orWhere('kab_kot', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate($perPage) // gunakan per_page dari request
-            ->appends($request->all()); // jaga agar parameter tetap di URL
+            ->paginate($perPage)
+            ->appends($request->all());
 
         return Inertia::render('RuasJalan/Index', [
             'ruas' => $ruas,
             'filters' => [
                 'search' => $search,
-                'per_page' => $perPage, // kirim balik ke frontend biar dropdown tetap sinkron
+                'per_page' => $perPage,
             ],
         ]);
     }
-
 
     public function create()
     {
@@ -44,29 +44,29 @@ class RuasJalanController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'Kl_Dat_Das' => 'nullable|string|max:100',
-            'Nm_Ruas' => 'required|string|max:255',
-            'Thn_Data' => 'nullable|integer',
-            'Status' => 'nullable|string|max:100',
-            'Fungsi' => 'nullable|string|max:100',
-            'Mendukung' => 'nullable|string|max:255',
-            'Ura_Dukung' => 'nullable|string|max:255',
-            'Propinsi' => 'nullable|string|max:100',
-            'Kab_Kot' => 'nullable|string|max:100',
-            'Kecamatan' => 'nullable|string|max:255',
-            'Desa_Kel' => 'nullable|string|max:255',
-            'Tk_Ruas_Aw' => 'nullable|string|max:255',
-            'Tk_Ruas_Ak' => 'nullable|string|max:255',
-            'Kd_Patok' => 'nullable|string|max:50',
-            'Km_Awal' => 'nullable|numeric',
-            'Km_Akhir' => 'nullable|numeric',
-            'Nm_Lintas' => 'nullable|string|max:255',
-            'Panjang' => 'nullable|numeric',
-            'Tipe_Keras' => 'nullable|string|max:100',
-            'Koord_X_Aw' => 'nullable|numeric',
-            'Koord_Y_Aw' => 'nullable|numeric',
-            'Koord_X_Ak' => 'nullable|numeric',
-            'Koord_Y_Ak' => 'nullable|numeric',
+            'kl_dat_das' => 'nullable|string|max:100',
+            'nm_ruas' => 'required|string|max:255',
+            'thn_data' => 'nullable|integer',
+            'status' => 'nullable|string|max:100',
+            'fungsi' => 'nullable|string|max:100',
+            'mendukung' => 'nullable|string|max:255',
+            'ura_dukung' => 'nullable|string|max:255',
+            'propinsi' => 'nullable|string|max:100',
+            'kab_kot' => 'nullable|string|max:100',
+            'kecamatan' => 'nullable|string|max:255',
+            'desa_kel' => 'nullable|string|max:255',
+            'tk_ruas_aw' => 'nullable|string|max:255',
+            'tk_ruas_ak' => 'nullable|string|max:255',
+            'kd_patok' => 'nullable|string|max:50',
+            'km_awal' => 'nullable|numeric',
+            'km_akhir' => 'nullable|numeric',
+            'nm_lintas' => 'nullable|string|max:255',
+            'panjang' => 'nullable|numeric',
+            'tipe_keras' => 'nullable|string|max:100',
+            'koord_x_aw' => 'nullable|numeric',
+            'koord_y_aw' => 'nullable|numeric',
+            'koord_x_ak' => 'nullable|numeric',
+            'koord_y_ak' => 'nullable|numeric',
         ]);
 
         RuasJalan::create($validated);
@@ -84,10 +84,9 @@ class RuasJalanController extends Controller
     public function update(Request $request, RuasJalan $ruasJalan)
     {
         $validated = $request->validate([
-            'Nm_Ruas' => 'required|string|max:255',
-            'Thn_Data' => 'nullable|integer',
-            'Status' => 'nullable|string|max:100',
-            // tambahkan field lain sesuai kebutuhan
+            'nm_ruas' => 'required|string|max:255',
+            'thn_data' => 'nullable|integer',
+            'status' => 'nullable|string|max:100',
         ]);
 
         $ruasJalan->update($validated);
@@ -148,7 +147,6 @@ class RuasJalanController extends Controller
 
             Log::info('Jumlah Placemark ditemukan: ' . count($placemarks));
 
-            // Ambil semua kolom di tabel ruas_jalan agar kita tahu mana yang valid
             $tableColumns = Schema::getColumnListing('ruas_jalan');
 
             $haversine = function ($lat1, $lon1, $lat2, $lon2) {
@@ -160,11 +158,26 @@ class RuasJalanController extends Controller
             };
 
             $count = 0;
+            $skipped = 0;
 
             foreach ($placemarks as $pm) {
                 $namaRuas = trim((string) ($pm->name ?? 'Tanpa Nama'));
+                $namaRuas = preg_replace('/\s+/', ' ', $namaRuas);
 
-                // ✅ Ambil SimpleData
+                // Deteksi nama kolom yang benar dari database
+                $kolomNama = collect($tableColumns)->first(fn($col) => strtolower($col) === 'nm_ruas') ?? 'nm_ruas';
+
+                // Gunakan nama kolom yang tepat dalam query
+                $existing = \App\Models\RuasJalan::whereRaw("LOWER(TRIM(\"{$kolomNama}\")) = ?", [strtolower($namaRuas)])->first();
+
+                if ($existing) {
+                    Log::warning("⚠️ Duplikat terdeteksi: {$namaRuas}");
+                    $skipped++;
+                    continue;
+                } else {
+                    Log::info("✅ Ruas baru akan disimpan: {$namaRuas}");
+                }
+
                 $simpleData = [];
                 foreach ($pm->xpath('.//kml:ExtendedData//kml:SimpleData') as $node) {
                     $key = trim((string) $node['name']);
@@ -173,7 +186,6 @@ class RuasJalanController extends Controller
                         $simpleData[$key] = $val;
                 }
 
-                // ✅ Ambil koordinat
                 $segments = [];
                 foreach ($pm->xpath('.//kml:LineString/kml:coordinates') as $node) {
                     $coords = preg_split('/[\s\n]+/', trim((string) $node));
@@ -195,7 +207,6 @@ class RuasJalanController extends Controller
                 $lastSeg = end($segments);
                 $last = end($lastSeg);
 
-                // Hitung total panjang
                 $totalDistance = 0;
                 foreach ($segments as $seg) {
                     for ($i = 1; $i < count($seg); $i++) {
@@ -210,26 +221,22 @@ class RuasJalanController extends Controller
 
                 DB::beginTransaction();
                 try {
-                    $ruas = \App\Models\RuasJalan::where('Nm_Ruas', $namaRuas)->first();
-
-                    // ✅ Siapkan data default
                     $dataRuas = [
-                        'Nm_Ruas' => $namaRuas,
-                        'Kl_Dat_Das' => 'Import KMZ',
-                        'Thn_Data' => date('Y'),
-                        'Status' => 'Baru Diimpor',
-                        'Fungsi' => 'Belum Ditentukan',
-                        'Koord_X_Aw' => $first['lng'],
-                        'Koord_Y_Aw' => $first['lat'],
-                        'Koord_X_Ak' => $last['lng'],
-                        'Koord_Y_Ak' => $last['lat'],
-                        'Shape_Leng' => round($totalDistance, 6),
-                        'Panjang' => round($totalDistance, 3),
+                        'nm_ruas' => $namaRuas,
+                        'kl_dat_das' => 'import kmz',
+                        'thn_data' => date('Y'),
+                        'status' => 'baru diimpor',
+                        'fungsi' => 'belum ditentukan',
+                        'koord_x_aw' => $first['lng'],
+                        'koord_y_aw' => $first['lat'],
+                        'koord_x_ak' => $last['lng'],
+                        'koord_y_ak' => $last['lat'],
+                        'shape_leng' => round($totalDistance, 6),
+                        'panjang' => round($totalDistance, 3),
+                        'remark' => '🆕 diimpor dari file kmz',
                     ];
 
-                    // ✅ Masukkan semua SimpleData yang cocok dengan kolom tabel
                     foreach ($simpleData as $key => $val) {
-                        // Samakan kapitalisasi agar fleksibel
                         foreach ($tableColumns as $col) {
                             if (strcasecmp($col, $key) == 0) {
                                 $dataRuas[$col] = $val;
@@ -238,19 +245,8 @@ class RuasJalanController extends Controller
                         }
                     }
 
-                    if ($ruas) {
-                        // Hapus koordinat lama
-                        \App\Models\KoordinatRuas::where('ruas_jalan_id', $ruas->id)->delete();
-                        $dataRuas['REMARK'] = "♻️ Diperbarui dari import KMZ " . now();
-                        $ruas->update($dataRuas);
-                        Log::info("♻️ Update ruas lama: {$namaRuas}");
-                    } else {
-                        $dataRuas['REMARK'] = "🆕 Diimpor dari file KMZ";
-                        $ruas = \App\Models\RuasJalan::create($dataRuas);
-                        Log::info("🆕 Tambah ruas baru: {$namaRuas}");
-                    }
+                    $ruas = \App\Models\RuasJalan::create($dataRuas);
 
-                    // Simpan koordinat
                     $batch = [];
                     $index = 1;
                     foreach ($segments as $i => $seg) {
@@ -270,81 +266,62 @@ class RuasJalanController extends Controller
 
                     DB::commit();
                     $count++;
+                    Log::info("🆕 Tambah ruas baru: {$namaRuas}");
                 } catch (\Throwable $e) {
                     DB::rollBack();
-                    Log::error('❌ Gagal menyimpan ruas ' . $namaRuas, [
-                        'error' => $e->getMessage(),
-                    ]);
+                    Log::error('❌ Gagal menyimpan ruas ' . $namaRuas, ['error' => $e->getMessage()]);
                 }
             }
 
-            Log::info("✅ Berhasil mengimpor {$count} ruas jalan lengkap beserta SimpleData & koordinat.");
-            return back()->with('success', "Data KMZ berhasil diimpor ($count ruas jalan).");
+            Log::info("✅ Berhasil mengimpor {$count} ruas baru. {$skipped} ruas dilewati (sudah ada).");
+            return back()->with('success', "Berhasil mengimpor {$count} ruas baru. {$skipped} ruas dilewati karena sudah ada.");
         }
 
         Log::error('❌ Gagal membuka file KMZ');
         return back()->withErrors(['msg' => 'Gagal membuka file KMZ']);
     }
 
+    public function map()
+    {
+        $ruasList = \App\Models\RuasJalan::select('id', 'nm_ruas')->get();
 
-
-public function map()
-{
-    // 🔹 Ambil semua ruas jalan
-    $ruasList = \App\Models\RuasJalan::select('id', 'Nm_Ruas')->get();
-
-    // 🔹 Ambil semua koordinat per ruas
-    $koordinatSemua = \App\Models\KoordinatRuas::select(
+        $koordinatSemua = \App\Models\KoordinatRuas::select(
             'ruas_jalan_id',
             'latitude',
             'longitude',
             'segment_ke'
         )
-        ->orderBy('ruas_jalan_id')
-        ->orderBy('segment_ke')
-        ->orderBy('id')
-        ->get()
-        ->groupBy('ruas_jalan_id');
+            ->orderBy('ruas_jalan_id')
+            ->orderBy('segment_ke')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('ruas_jalan_id');
 
-    // 🔹 Bentuk struktur data siap kirim ke frontend
-    $ruasDenganSegmen = $ruasList->map(function ($r) use ($koordinatSemua) {
-        $segments = collect($koordinatSemua->get($r->id, []))
-            ->groupBy('segment_ke')
-            ->map(function ($points, $segmentKe) {
-                return [
-                    'segment_ke' => $segmentKe,
-                    'koordinat' => $points->map(fn($p) => [
-                        'lat' => (float) $p->latitude,
-                        'lng' => (float) $p->longitude,
-                    ])->values(),
-                ];
-            })
-            ->values();
+        $ruasDenganSegmen = $ruasList->map(function ($r) use ($koordinatSemua) {
+            $segments = collect($koordinatSemua->get($r->id, []))
+                ->groupBy('segment_ke')
+                ->map(function ($points, $segmentKe) {
+                    return [
+                        'segment_ke' => $segmentKe,
+                        'koordinat' => $points->map(fn($p) => [
+                            'lat' => (float) $p->latitude,
+                            'lng' => (float) $p->longitude,
+                        ])->values(),
+                    ];
+                })
+                ->values();
 
-        return [
-            'ruas_jalan_id' => $r->id,
-            'Nm_Ruas' => $r->Nm_Ruas,
-            'segments' => $segments,
-        ];
-    });
+            return [
+                'ruas_jalan_id' => $r->id,
+                'nm_ruas' => $r->nm_ruas,
+                'segments' => $segments,
+            ];
+        });
 
-    return inertia('RuasJalan/Map', [
-        'ruas' => $ruasDenganSegmen,
-    ]);
-}
-
-
-
-
-
-    // public function show($id)
-    // {
-    //     $ruas = RuasJalan::findOrFail($id);
-
-    //     return inertia('RuasJalan/Show', [
-    //         'ruas' => $ruas,
-    //     ]);
-    // }
+        return inertia('RuasJalan/Map', [
+            'ruas' => $ruasDenganSegmen,
+        ]);
+    }
 
     public function show($id)
     {
