@@ -12,6 +12,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\SettingAppController;
 use App\Http\Controllers\MediaFolderController;
 use App\Http\Controllers\RuasJalanController;
+use App\Http\Controllers\PatokController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -44,10 +45,18 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::get('/ruas-jalan', [RuasJalanController::class, 'index'])
         ->name('ruas-jalan.index');
     Route::post('/ruas-jalan/import', [RuasJalanController::class, 'import'])
-    ->name('ruas-jalan.import')
-    ->middleware(['auth', 'verified']);
+        ->name('ruas-jalan.import')
+        ->middleware(['auth', 'verified']);
     Route::get('/ruas-jalan/map', [RuasJalanController::class, 'map'])->name('ruas.map');
     Route::get('/ruas-jalan/{id}', [RuasJalanController::class, 'show'])->name('ruas-jalan.show');
+
+    Route::get('/patok', [PatokController::class, 'index'])->name('patok.index');
+    Route::put('/patok/{id}', [PatokController::class, 'update'])->name('patok.update');
+    Route::put('/patok/{id}/update-patok', [PatokController::class, 'updatePatok'])
+    ->name('patok.updatePatok');
+    Route::delete('/patok/{id}', [PatokController::class, 'destroy'])
+    ->name('patok.destroy');
+
 
 });
 
