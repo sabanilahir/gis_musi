@@ -18,8 +18,7 @@ class PatokController extends Controller
 
         // Kalau kamu mau dropdown filter "Ruas", bisa ambil daftar ruas unik juga
         // $ruasList = \App\Models\RuasJalan::select('id', 'nm_ruas')->orderBy('nm_ruas')->get();
-        $ruasList = RuasJalan::whereNull('kd_patok')
-            ->select('id', 'nm_ruas')
+        $ruasList = RuasJalan::select('id', 'nm_ruas')
             ->orderBy('nm_ruas')
             ->get();
 

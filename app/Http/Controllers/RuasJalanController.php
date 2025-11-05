@@ -147,7 +147,7 @@ class RuasJalanController extends Controller
 
             Log::info('Jumlah Placemark ditemukan: ' . count($placemarks));
 
-            $tableColumns = Schema::getColumnListing('ruas_jalan');
+            $tableColumns = \Schema::getColumnListing('ruas_jalan');
 
             $haversine = function ($lat1, $lon1, $lat2, $lon2) {
                 $R = 6371;
@@ -161,23 +161,7 @@ class RuasJalanController extends Controller
             $skipped = 0;
 
             foreach ($placemarks as $pm) {
-                $namaRuas = trim((string) ($pm->name ?? 'Tanpa Nama'));
-                $namaRuas = preg_replace('/\s+/', ' ', $namaRuas);
-
-                // Deteksi nama kolom yang benar dari database
-                $kolomNama = collect($tableColumns)->first(fn($col) => strtolower($col) === 'nm_ruas') ?? 'nm_ruas';
-
-                // Gunakan nama kolom yang tepat dalam query
-                $existing = \App\Models\RuasJalan::whereRaw("LOWER(TRIM(\"{$kolomNama}\")) = ?", [strtolower($namaRuas)])->first();
-
-                if ($existing) {
-                    Log::warning("⚠️ Duplikat terdeteksi: {$namaRuas}");
-                    $skipped++;
-                    continue;
-                } else {
-                    Log::info("✅ Ruas baru akan disimpan: {$namaRuas}");
-                }
-
+                // 🧭 Ambil semua SimpleData
                 $simpleData = [];
                 foreach ($pm->xpath('.//kml:ExtendedData//kml:SimpleData') as $node) {
                     $key = trim((string) $node['name']);
@@ -186,6 +170,27 @@ class RuasJalanController extends Controller
                         $simpleData[$key] = $val;
                 }
 
+                // 🏷️ Ambil nama ruas dari SimpleData
+                $namaRuasKey = collect(array_keys($simpleData))->first(function ($k) {
+                    return in_array(strtolower($k), ['nm_ruas', 'nama_ruas', 'ruas', 'nama']);
+                });
+
+                $namaRuas = trim((string) ($simpleData[$namaRuasKey] ?? $pm->name ?? 'Tanpa Nama'));
+                $namaRuas = preg_replace('/\s+/', ' ', $namaRuas);
+
+                // 🧩 Cek duplikat berdasarkan nama ruas
+                $kolomNama = collect($tableColumns)->first(fn($col) => strtolower($col) === 'nm_ruas') ?? 'nm_ruas';
+                $existing = \App\Models\RuasJalan::whereRaw("LOWER(TRIM(\"{$kolomNama}\")) = ?", [strtolower($namaRuas)])->first();
+
+                if ($existing) {
+                    Log::warning("⚠️ Duplikat terdeteksi: {$namaRuas}");
+                    $skipped++;
+                    continue;
+                }
+
+                Log::info("✅ Ruas baru akan disimpan: {$namaRuas}");
+
+                // 🧭 Ambil koordinat
                 $segments = [];
                 foreach ($pm->xpath('.//kml:LineString/kml:coordinates') as $node) {
                     $coords = preg_split('/[\s\n]+/', trim((string) $node));
@@ -219,34 +224,39 @@ class RuasJalanController extends Controller
                     }
                 }
 
-                DB::beginTransaction();
-                try {
-                    $dataRuas = [
-                        'nm_ruas' => $namaRuas,
-                        'kl_dat_das' => 'import kmz',
-                        'thn_data' => date('Y'),
-                        'status' => 'baru diimpor',
-                        'fungsi' => 'belum ditentukan',
-                        'koord_x_aw' => $first['lng'],
-                        'koord_y_aw' => $first['lat'],
-                        'koord_x_ak' => $last['lng'],
-                        'koord_y_ak' => $last['lat'],
-                        'shape_leng' => round($totalDistance, 6),
-                        'panjang' => round($totalDistance, 3),
-                        'remark' => '🆕 diimpor dari file kmz',
-                    ];
+                // 📦 Siapkan data ruas
+                $dataRuas = [
+                    'nm_ruas' => $namaRuas,
+                    'kl_dat_das' => 'import kmz',
+                    'thn_data' => date('Y'),
+                    'status' => $simpleData['status'] ?? 'baru diimpor',
+                    'fungsi' => $simpleData['fungsi'] ?? 'belum ditentukan',
+                    'koord_x_aw' => $first['lng'],
+                    'koord_y_aw' => $first['lat'],
+                    'koord_x_ak' => $last['lng'],
+                    'koord_y_ak' => $last['lat'],
+                    'shape_leng' => isset($simpleData['shape_leng'])
+                        ? (float) $simpleData['shape_leng']
+                        : round($totalDistance, 6),
+                    'panjang' => round($totalDistance, 3),
+                    'remark' => '🆕 diimpor dari file kmz',
+                ];
 
-                    foreach ($simpleData as $key => $val) {
-                        foreach ($tableColumns as $col) {
-                            if (strcasecmp($col, $key) == 0) {
-                                $dataRuas[$col] = $val;
-                                break;
-                            }
+                // 🧩 Masukkan semua SimpleData yang cocok dengan kolom tabel
+                foreach ($simpleData as $key => $val) {
+                    foreach ($tableColumns as $col) {
+                        if (strcasecmp($col, $key) == 0) {
+                            $dataRuas[$col] = $val;
+                            break;
                         }
                     }
+                }
 
+                DB::beginTransaction();
+                try {
                     $ruas = \App\Models\RuasJalan::create($dataRuas);
 
+                    // Simpan koordinat ke tabel koordinat_ruas
                     $batch = [];
                     $index = 1;
                     foreach ($segments as $i => $seg) {
@@ -280,6 +290,7 @@ class RuasJalanController extends Controller
         Log::error('❌ Gagal membuka file KMZ');
         return back()->withErrors(['msg' => 'Gagal membuka file KMZ']);
     }
+
 
     public function map()
     {

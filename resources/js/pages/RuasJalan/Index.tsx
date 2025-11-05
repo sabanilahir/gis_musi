@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import Pagination from '@/components/Pagination';
 
 export default function Index() {
     const { ruas, filters }: any = usePage().props;
@@ -315,7 +316,22 @@ export default function Index() {
                 </div>
 
                 {/* Pagination */}
-                {ruas?.links?.length > 0 && (
+                {/* Pagination */}
+                <Pagination
+                    page={ruas.current_page}
+                    totalPages={ruas.last_page}
+                    perPage={ruas.per_page}
+                    totalData={ruas.total}
+                    onPageChange={(newPage) => {
+                        if (newPage < 1 || newPage > ruas.last_page) return;
+                        router.get(
+                            route('ruas-jalan.index'),
+                            { ...filters, page: newPage, per_page: perPage, search },
+                            { preserveState: true, replace: true },
+                        );
+                    }}
+                />
+                {/* {ruas?.links?.length > 0 && (
                     <div className="mt-4 flex justify-center gap-2">
                         {ruas.links.map((link: any, index: number) => (
                             <Button
@@ -331,12 +347,13 @@ export default function Index() {
                             />
                         ))}
                     </div>
-                )}
+                )} */}
             </div>
 
             {/* ===== MODAL EDIT ===== */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20">
+
                     <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
                         {/* Tombol silang (close) di kanan atas */}
                         <button

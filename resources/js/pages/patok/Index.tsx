@@ -1,7 +1,9 @@
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import Pagination from '@/components/Pagination';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import debounce from 'lodash.debounce';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Patok {
     id: number;
@@ -39,7 +41,11 @@ export default function Index() {
     const [isAddModal, setIsAddModal] = useState(false);
     const [selectedPatok, setSelectedPatok] = useState<Patok | null>(null);
     const [editValue, setEditValue] = useState('');
-    const [editNamaRuas, setEditNamaRuas] = useState(''); // ✅ Tambahan penting
+    const [editNamaRuas, setEditNamaRuas] = useState('');
+
+    // KONFIRMASI DELETE
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
 
     // ======== FILTERING + SORT ========
     useEffect(() => {
@@ -87,13 +93,21 @@ export default function Index() {
         }
     };
 
-    // CRUD
-    const handleDelete = (id: number) => {
-        if (confirm('Yakin ingin menghapus patok ini?')) {
-            router.delete(route('patok.destroy', id));
+    // DELETE HANDLER
+    const handleDeleteClick = (id: number) => {
+        setDeleteId(id);
+        setIsConfirmOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (deleteId) {
+            router.delete(route('patok.destroy', deleteId), {
+                onFinish: () => setIsConfirmOpen(false),
+            });
         }
     };
 
+    // EDIT & TAMBAH
     const openEditModal = (patok: Patok) => {
         setSelectedPatok(patok);
         setEditValue(patok.kd_patok || '');
@@ -110,7 +124,6 @@ export default function Index() {
         setIsModalOpen(true);
     };
 
-    // SORT ICON
     const sortIcon = (column: keyof Patok) => {
         if (sortColumn !== column) return '↕';
         return sortOrder === 'asc' ? '▲' : '▼';
@@ -218,18 +231,16 @@ export default function Index() {
                                         <td className="border px-4 py-2 dark:border-gray-700">{p.kd_patok || '-'}</td>
                                         <td className="space-x-3 border px-4 py-2 text-center dark:border-gray-700">
                                             <button
-                                                onClick={() => p.kd_patok && openEditModal(p)}
-                                                disabled={!p.kd_patok}
-                                                className={`${
-                                                    p.kd_patok
-                                                        ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
-                                                        : 'cursor-not-allowed text-gray-400 dark:text-gray-600'
-                                                }`}
+                                                onClick={() => {
+                                                    console.log('Tombol Edit diklik:', p);
+                                                    openEditModal(p);
+                                                }}
+                                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                             >
                                                 Edit
                                             </button>
                                             <button
-                                                onClick={() => p.kd_patok && handleDelete(p.id)}
+                                                onClick={() => p.kd_patok && handleDeleteClick(p.id)}
                                                 disabled={!p.kd_patok}
                                                 className={`${
                                                     p.kd_patok
@@ -253,178 +264,71 @@ export default function Index() {
                     </table>
                 </div>
 
-                {/* PAGINATION */}
-                {totalPages > 1 && (
-                    <div className="mt-4 flex justify-center gap-2">
-                        {Array.from({ length: totalPages }, (_, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setPage(i + 1)}
-                                className={`rounded border px-3 py-1 transition ${
-                                    page === i + 1
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-                                }`}
-                            >
-                                {i + 1}
-                            </button>
-                        ))}
-                    </div>
-                )}
+                <Pagination page={page} totalPages={totalPages} perPage={perPage} totalData={filteredPatok.length} onPageChange={setPage} />
             </div>
 
-            {/* ============== MODAL TAMBAH / EDIT ============== */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
-                        <button
-                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                            onClick={() => setIsModalOpen(false)}
-                        >
-                            ✕
-                        </button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+                        <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-100">{isAddModal ? 'Tambah Patok' : 'Edit Patok'}</h2>
 
-                        <h2 className="mb-4 text-xl font-bold text-gray-800 dark:text-gray-100">
-                            {isAddModal ? '➕ Tambah Patok Baru' : '✏️ Edit Nama Patok'}
-                        </h2>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Ruas</label>
+                            <select
+                                value={editNamaRuas}
+                                onChange={(e) => setEditNamaRuas(e.target.value)}
+                                className="w-full rounded border p-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                            >
+                                <option value="">Pilih Ruas...</option>
+                                {ruasList.map((r) => (
+                                    <option key={r.id} value={r.nm_ruas}>
+                                        {r.nm_ruas}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                        {isModalOpen && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                                <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
-                                    {/* Tombol X */}
-                                    <button
-                                        className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                                        onClick={() => setIsModalOpen(false)}
-                                    >
-                                        ✕
-                                    </button>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Patok</label>
+                            <input
+                                type="text"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-full rounded border p-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                            />
+                        </div>
 
-                                    {/* Judul */}
-                                    <h2 className="mb-4 text-xl font-bold text-gray-800 dark:text-gray-100">
-                                        {isAddModal ? '➕ Tambah Patok Baru' : '✏️ Edit Nama Patok'}
-                                    </h2>
-
-                                    {/* Form */}
-                                    <form
-                                        onSubmit={(e) => {
-                                            e.preventDefault();
-
-                                            // --- MODE TAMBAH ---
-                                            if (isAddModal) {
-                                                if (!selectedRuas) {
-                                                    alert('Pilih ruas dulu sebelum menyimpan!');
-                                                    return;
-                                                }
-
-                                                router.put(
-                                                    route('patok.updatePatok', selectedRuas),
-                                                    { kd_patok: editValue },
-                                                    {
-                                                        preserveScroll: true,
-                                                        onSuccess: () => {
-                                                            // alert('Patok baru berhasil ditambahkan!');
-                                                            setIsModalOpen(false);
-                                                            setEditValue('');
-                                                            setSelectedRuas('');
-                                                            router.reload({ only: ['patokList', 'ruasList'] });
-                                                        },
-                                                        onError: (errors) => {
-                                                            console.error(errors);
-                                                            // alert('Gagal menambah patok.');
-                                                        },
-                                                    },
-                                                );
-                                            }
-
-                                            // --- MODE EDIT ---
-                                            else {
-                                                if (!selectedPatok) return;
-
-                                                router.put(
-                                                    route('patok.update', selectedPatok.id),
-                                                    { kd_patok: editValue },
-                                                    {
-                                                        preserveScroll: true,
-                                                        onSuccess: () => {
-                                                            // alert('Nama patok berhasil diperbarui!');
-                                                            setIsModalOpen(false);
-                                                            setEditValue('');
-                                                            router.reload({ only: ['patokList'] });
-                                                        },
-                                                        onError: (errors) => {
-                                                            console.error(errors);
-                                                            // alert('Gagal memperbarui patok.');
-                                                        },
-                                                    },
-                                                );
-                                            }
-                                        }}
-                                    >
-                                        {/* Dropdown Ruas (khusus tambah) */}
-                                        {isAddModal ? (
-                                            <div className="mb-4">
-                                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Pilih Ruas</label>
-                                                <select
-                                                    value={selectedRuas}
-                                                    onChange={(e) => setSelectedRuas(Number(e.target.value))}
-                                                    className="w-full rounded border bg-white p-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                                                    required
-                                                >
-                                                    <option value="">-- Pilih Ruas --</option>
-                                                    {ruasList
-                                                        .filter((r) => !r.kd_patok) // hanya ruas tanpa patok
-                                                        .map((r) => (
-                                                            <option key={r.id} value={r.id}>
-                                                                {r.nm_ruas}
-                                                            </option>
-                                                        ))}
-                                                </select>
-                                            </div>
-                                        ) : (
-                                            // Field nama ruas (hanya tampil di mode edit)
-                                            <div className="mb-4">
-                                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Nama Ruas</label>
-                                                <input
-                                                    type="text"
-                                                    value={editNamaRuas || ''}
-                                                    disabled
-                                                    className="w-full rounded border bg-gray-100 p-2 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Field Nama Patok */}
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Nama Patok</label>
-                                            <input
-                                                type="text"
-                                                value={editValue}
-                                                onChange={(e) => setEditValue(e.target.value)}
-                                                className="w-full rounded border bg-white p-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                                                required
-                                            />
-                                        </div>
-
-                                        {/* Tombol aksi */}
-                                        <div className="mt-4 flex justify-end space-x-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsModalOpen(false)}
-                                                className="rounded bg-gray-400 px-4 py-2 text-white hover:bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                            >
-                                                Batal
-                                            </button>
-                                            <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">
-                                                Simpan
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setIsModalOpen(false)} className="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600">
+                                Batal
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (isAddModal) {
+                                        // contoh simpan data baru
+                                        router.post(route('patok.store'), { nm_ruas: editNamaRuas, kd_patok: editValue });
+                                    } else if (selectedPatok) {
+                                        router.put(route('patok.update', selectedPatok.id), { nm_ruas: editNamaRuas, kd_patok: editValue });
+                                    }
+                                    setIsModalOpen(false);
+                                }}
+                                className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+                            >
+                                Simpan
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* MODAL KONFIRMASI DELETE */}
+            <ConfirmDeleteModal
+                isOpen={isConfirmOpen}
+                onCancel={() => setIsConfirmOpen(false)}
+                onConfirm={confirmDelete}
+                title="Apakah anda yakin ingin menghapus Patok?"
+                message="* Data yang sudah dihapus tidak dapat dikembalikan"
+            />
         </AppLayout>
     );
 }

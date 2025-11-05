@@ -13,10 +13,14 @@ use App\Http\Controllers\SettingAppController;
 use App\Http\Controllers\MediaFolderController;
 use App\Http\Controllers\RuasJalanController;
 use App\Http\Controllers\PatokController;
+use App\Http\Controllers\InformasiRuasController;
+use App\Http\Controllers\DashboardUserController;
+use App\Http\Controllers\TitikController;
 
-Route::get('/', function () {
-    return Inertia::render('welcome');
-})->name('home');
+// Route::get('/', function () {
+//     return Inertia::render('welcome');
+// })->name('home');
+Route::get('/', [RuasJalanController::class, 'map'])->name('home');
 
 Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::get('dashboard', function () {
@@ -47,7 +51,7 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::post('/ruas-jalan/import', [RuasJalanController::class, 'import'])
         ->name('ruas-jalan.import')
         ->middleware(['auth', 'verified']);
-    Route::get('/ruas-jalan/map', [RuasJalanController::class, 'map'])->name('ruas.map');
+    // Route::get('/ruas-jalan/map', [RuasJalanController::class, 'map'])->name('ruas.map');
     Route::get('/ruas-jalan/{id}', [RuasJalanController::class, 'show'])->name('ruas-jalan.show');
 
     Route::get('/patok', [PatokController::class, 'index'])->name('patok.index');
@@ -57,6 +61,23 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::delete('/patok/{id}', [PatokController::class, 'destroy'])
     ->name('patok.destroy');
 
+    Route::get('/titik', [TitikController::class, 'index'])->name('titik.index');
+    Route::put('/titik/save/{id}', [TitikController::class, 'save'])->name('titik.save');
+    Route::delete('/titik/{ruas_id}/tipe/{tipe}', [TitikController::class, 'destroy'])->name('titik.destroy');
+
+
+Route::prefix('informasi-ruas')->group(function () {
+    Route::get('/', [InformasiRuasController::class, 'index'])->name('informasi-ruas.index');
+    Route::get('/{id}/preview', [InformasiRuasController::class, 'preview'])->name('informasi-ruas.preview');
+    Route::get('/{id}/qrcode', [InformasiRuasController::class, 'generateQrCode'])->name('informasi-ruas.qrcode');
+
+});
+
+
+
+Route::get('/dashboard-user', [DashboardUserController::class, 'index'])
+    ->name('dashboard.user')
+    ->middleware(['auth']);
 
 });
 
